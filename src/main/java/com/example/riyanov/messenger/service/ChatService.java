@@ -87,6 +87,7 @@ public class ChatService {
         return ChatMapper.toMessageDto(message);
     }
 
+    @Transactional(readOnly = true)
     public List<ChatDto> getUserChats(Long userId) {
         List<Chat> chats = chatRepository.findAllByUserId(userId);
         return chats.stream()
@@ -94,6 +95,7 @@ public class ChatService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<MessageDto> getChatMessages(Long chatId, Long userId) {
         // Проверка доступа
         boolean isParticipant = participantRepository.existsByChatIdAndUserId(chatId, userId);

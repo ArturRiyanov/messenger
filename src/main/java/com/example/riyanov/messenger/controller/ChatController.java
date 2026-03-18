@@ -44,4 +44,5 @@ public class ChatController {
                                                             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(chatService.getChatMessages(chatId, userDetails.getId()));
     }
+
 }

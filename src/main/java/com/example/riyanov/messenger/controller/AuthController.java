@@ -47,7 +47,7 @@ public class AuthController {
 
         if (passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
             String token = jwtUtil.generateToken(user.getUsername());
-            return ResponseEntity.ok(new LoginResponse(token, user.getUsername()));
+            return ResponseEntity.ok(new LoginResponse(token, user.getUsername(), user.getId()));
         } else {
             return ResponseEntity.status(401).body("Invalid credentials");
         }
