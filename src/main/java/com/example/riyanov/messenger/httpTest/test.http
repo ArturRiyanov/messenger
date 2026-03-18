@@ -14,7 +14,7 @@ POST http://localhost:8080/api/test/login
 Content-Type: application/json
 
 {
-  "username": "emil3",
+  "username": "emil2",
   "password": "secret"
 }
 
@@ -22,3 +22,46 @@ Content-Type: application/json
 #список пользователей (без паролей).
 GET http://localhost:8080/api/test/users
 Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJlbWlsMyIsImlhdCI6MTc3MzgzNTQ3MCwiZXhwIjoxNzczOTIxODcwfQ.sltE0pYPrcu7o92CFoeQiWNUZBneGrEXTUstd3WnfV_3wrThg4Fx_qF05bBGeJuTc9rEy4L-B8PugOcHsn28Sg
+
+
+###
+#Создание нового чата
+POST http://localhost:8080/api/chats
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJlbWlsMyIsImlhdCI6MTc3Mzg0MDQ1NCwiZXhwIjoxNzczOTI2ODU0fQ.v2Lnwt8iXLBfJi0NSXv2R_bmQj8I_Vz0P7oD2wjhv1alz-K0KcCIic14vUw5LgEn1dzsrGLOmZN3DkyoqWyUTQ
+Content-Type: application/json
+
+{
+  "participantIds": [1, 13]
+}
+
+
+
+###
+#Создание общего нового чата
+POST http://localhost:8080/api/chats
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJlbWlsMyIsImlhdCI6MTc3MzgzOTgxMSwiZXhwIjoxNzczOTI2MjExfQ.raP5ReP_QPRfsfp34YVJxVUUaUXazuTAQWGyk8iR2xT3KI7cJf8Okg7QvedgrOhlHbbIG5pkV2nPNGBqFkhtzA
+Content-Type: application/json
+
+{
+  "name": "Общий чат",
+  "participantIds": [1, 13]
+}
+
+
+###
+#Получить список чатов текущего пользователя
+GET http://localhost:8080/api/chats
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJlbWlsMyIsImlhdCI6MTc3MzgzOTgxMSwiZXhwIjoxNzczOTI2MjExfQ.raP5ReP_QPRfsfp34YVJxVUUaUXazuTAQWGyk8iR2xT3KI7cJf8Okg7QvedgrOhlHbbIG5pkV2nPNGBqFkhtzA
+
+
+
+###
+#Отправить сообщение в чат
+POST http://localhost:8080/api/chats/messages
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJlbWlsMiIsImlhdCI6MTc3Mzg0MDg0OCwiZXhwIjoxNzczOTI3MjQ4fQ.DLhP932_mlWC_mi4EFvyNDBbya6_6UnL-a6gD6i1S2fToUe4lMj1Zdut28H0-Cf_umQZFcw3b0PLz7tgblfgsQ
+Content-Type: application/json
+
+{
+  "chatId": 5,
+  "content": "Привет, это первое сообщение!"
+}
