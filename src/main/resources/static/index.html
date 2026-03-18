@@ -156,6 +156,7 @@
             font-size: 1.5rem;
             color: white;
             flex-shrink: 0;
+            position: relative;
         }
 
         .chat-info {
@@ -222,6 +223,7 @@
             flex-shrink: 0;
             color: #fff;
             font-size: 1rem;
+            position: relative;
         }
 
         .message-bubble {
@@ -289,6 +291,23 @@
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+
+        /* Индикатор онлайн */
+        .online-indicator {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #8696a0;
+            border: 2px solid #1f2c33;
+            transition: background 0.2s;
+        }
+
+        .online-indicator.online {
+            background: #00a884;
         }
 
         /* Форма авторизации */
@@ -494,9 +513,26 @@
         stompClient = Stomp.over(socket);
         stompClient.connect({}, function(frame) {
             console.log('WebSocket connected');
+            // Подписка на обновления статуса пользователей
+            stompClient.subscribe('/topic/user.status', function(messageOutput) {
+                const status = JSON.parse(messageOutput.body);
+                updateUserStatus(status.userId, status.online);
+            });
         }, function(error) {
             console.error('WebSocket error:', error);
             setTimeout(connectWebSocket, 5000);
+        });
+    }
+
+    // Обновление статуса онлайн во всех аватарах
+    function updateUserStatus(userId, online) {
+        const selectors = [
+            `.chat-avatar[data-user-id="${userId}"] .online-indicator`,
+            `.message-avatar[data-user-id="${userId}"] .online-indicator`
+        ];
+        document.querySelectorAll(selectors.join(',')).forEach(indicator => {
+            if (online) indicator.classList.add('online');
+            else indicator.classList.remove('online');
         });
     }
 
@@ -517,18 +553,29 @@
             div.className = 'chat-item';
             if (chat.id === currentChatId) div.classList.add('active');
 
-            // Определяем название чата
+            // Определяем название чата и собеседника для личного чата
             let chatName = chat.name;
-            if (!chatName) {
-                // Личный чат – показываем имя собеседника (не себя)
-                const other = chat.participants.find(p => p.id != currentUserId);
+            let other = null;
+            if (!chatName && chat.participants.length === 2) {
+                other = chat.participants.find(p => p.id != currentUserId);
                 chatName = other ? other.username : 'Без названия';
             }
 
             // Аватарка (первая буква имени)
             const avatar = document.createElement('div');
             avatar.className = 'chat-avatar';
+            if (other) {
+                avatar.setAttribute('data-user-id', other.id);
+            }
             avatar.innerText = chatName.charAt(0).toUpperCase();
+
+            // Индикатор онлайн
+            const indicator = document.createElement('span');
+            indicator.className = 'online-indicator';
+            if (other && other.onlineStatus) {
+                indicator.classList.add('online');
+            }
+            avatar.appendChild(indicator);
 
             // Информация о чате
             const info = document.createElement('div');
@@ -599,10 +646,17 @@
         const msgDiv = document.createElement('div');
         msgDiv.className = `message ${isOwn ? 'own' : ''}`;
 
-        // Аватарка (для чужих сообщений)
+        // Аватарка с индикатором
         const avatar = document.createElement('div');
         avatar.className = 'message-avatar';
+        avatar.setAttribute('data-user-id', msg.sender.id);
         avatar.innerText = msg.sender.username.charAt(0).toUpperCase();
+
+        const indicator = document.createElement('span');
+        indicator.className = 'online-indicator';
+        if (msg.sender.onlineStatus) indicator.classList.add('online');
+        avatar.appendChild(indicator);
+
         if (!isOwn) msgDiv.appendChild(avatar);
 
         // Пузырёк сообщения

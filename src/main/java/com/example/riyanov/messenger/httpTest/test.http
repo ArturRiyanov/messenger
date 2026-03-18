@@ -14,8 +14,8 @@ POST http://localhost:8080/api/test/login
 Content-Type: application/json
 
 {
-  "username": "emil2",
-  "password": "secret"
+  "username": "Rianoff",
+  "password": "213455aa"
 }
 
 ###
@@ -65,3 +65,8 @@ Content-Type: application/json
   "chatId": 5,
   "content": "Привет, это первое сообщение!"
 }
+
+
+###
+GET http://localhost:8080/api/chats
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJSaWFub2ZmIiwidXNlcklkIjoxNSwiaWF0IjoxNzczODU4OTE5LCJleHAiOjE3NzM5NDUzMTl9.AScpp96JQ7QK-0h7L299ITYRVZTw1L_GqXK37A5qNcXQSSJNmtGllUKf4ezrmw17AXyhGPbpgSdn39CtgbxC8w
