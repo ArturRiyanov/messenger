@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
     <meta charset="UTF-8">
     <title>Мессенджер</title>
     <!-- Font Awesome для иконок -->
@@ -408,11 +410,16 @@
     let currentChatId = null;
     let currentUserName = '';
 
+    // WebSocket переменные
+    let stompClient = null;
+    let subscriptions = {}; // для хранения подписок на чаты
+
     console.log('Current user ID:', currentUserId);
 
     // При загрузке страницы проверяем токен
     if (token) {
         showApp();
+        connectWebSocket();
         loadChats();
     } else {
         document.getElementById('auth').classList.remove('hidden');
@@ -452,6 +459,7 @@
             localStorage.setItem('userId', currentUserId);
             document.getElementById('username').innerText = data.username;
             showApp();
+            connectWebSocket();
             loadChats();
         } else {
             document.getElementById('authError').innerText = 'Неверный логин или пароль';
@@ -466,6 +474,10 @@
 
     // Выход
     function logout() {
+        if (stompClient) {
+            stompClient.disconnect();
+            stompClient = null;
+        }
         localStorage.removeItem('token');
         localStorage.removeItem('userId');
         token = null;
@@ -473,6 +485,19 @@
         currentChatId = null;
         document.getElementById('auth').classList.remove('hidden');
         document.querySelector('.app-container').classList.add('hidden');
+    }
+
+    // Подключение к WebSocket
+    function connectWebSocket() {
+        if (stompClient && stompClient.connected) return;
+        const socket = new SockJS('/ws?token=' + token);
+        stompClient = Stomp.over(socket);
+        stompClient.connect({}, function(frame) {
+            console.log('WebSocket connected');
+        }, function(error) {
+            console.error('WebSocket error:', error);
+            setTimeout(connectWebSocket, 5000);
+        });
     }
 
     // Загрузить список чатов пользователя
@@ -529,6 +554,23 @@
         if (activeChat) activeChat.classList.add('active');
 
         document.getElementById('currentChat').innerText = 'Чат #' + chatId;
+
+        // Отписываемся от предыдущего чата, если был
+        for (let key in subscriptions) {
+            subscriptions[key].unsubscribe();
+            delete subscriptions[key];
+        }
+
+        // Подписываемся на новые сообщения текущего чата
+        if (stompClient && stompClient.connected) {
+            subscriptions[chatId] = stompClient.subscribe('/topic/chat.' + chatId, function(messageOutput) {
+                const message = JSON.parse(messageOutput.body);
+                appendMessage(message);
+                loadChats(); // обновить список чатов (последнее сообщение)
+            });
+        }
+
+        // Загружаем историю сообщений через REST
         const response = await fetch(`/api/chats/${chatId}/messages`, {
             headers: { 'Authorization': 'Bearer ' + token }
         });
@@ -540,55 +582,61 @@
         displayMessages(messages);
     }
 
-    // Отобразить сообщения в правой панели
+    // Отобразить все сообщения (при открытии чата)
     function displayMessages(messages) {
         const messagesDiv = document.getElementById('messages');
         messagesDiv.innerHTML = '';
         messages.forEach(msg => {
-            const isOwn = msg.sender.id == currentUserId;
-            const msgDiv = document.createElement('div');
-            msgDiv.className = `message ${isOwn ? 'own' : ''}`;
-
-            // Аватарка (для чужих сообщений)
-            const avatar = document.createElement('div');
-            avatar.className = 'message-avatar';
-            avatar.innerText = msg.sender.username.charAt(0).toUpperCase();
-            if (!isOwn) msgDiv.appendChild(avatar);
-
-            // Пузырёк сообщения
-            const bubble = document.createElement('div');
-            bubble.className = 'message-bubble';
-
-            // Имя отправителя (только для чужих)
-            if (!isOwn) {
-                const senderSpan = document.createElement('div');
-                senderSpan.className = 'message-sender';
-                senderSpan.innerText = msg.sender.username;
-                bubble.appendChild(senderSpan);
-            }
-
-            // Текст сообщения
-            const content = document.createElement('div');
-            content.innerText = msg.content;
-            bubble.appendChild(content);
-
-            // Время
-            const time = document.createElement('div');
-            time.className = 'message-time';
-            time.innerText = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            bubble.appendChild(time);
-
-            msgDiv.appendChild(bubble);
-
-            // Для своих сообщений аватарка справа (после пузырька)
-            if (isOwn) {
-                const ownAvatar = avatar.cloneNode(true);
-                msgDiv.appendChild(ownAvatar);
-            }
-
-            messagesDiv.appendChild(msgDiv);
+            appendMessage(msg);
         });
-        // Прокрутка вниз
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    // Добавить одно новое сообщение в контейнер
+    function appendMessage(msg) {
+        const messagesDiv = document.getElementById('messages');
+        const isOwn = msg.sender.id == currentUserId;
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `message ${isOwn ? 'own' : ''}`;
+
+        // Аватарка (для чужих сообщений)
+        const avatar = document.createElement('div');
+        avatar.className = 'message-avatar';
+        avatar.innerText = msg.sender.username.charAt(0).toUpperCase();
+        if (!isOwn) msgDiv.appendChild(avatar);
+
+        // Пузырёк сообщения
+        const bubble = document.createElement('div');
+        bubble.className = 'message-bubble';
+
+        // Имя отправителя (только для чужих)
+        if (!isOwn) {
+            const senderSpan = document.createElement('div');
+            senderSpan.className = 'message-sender';
+            senderSpan.innerText = msg.sender.username;
+            bubble.appendChild(senderSpan);
+        }
+
+        // Текст сообщения
+        const content = document.createElement('div');
+        content.innerText = msg.content;
+        bubble.appendChild(content);
+
+        // Время
+        const time = document.createElement('div');
+        time.className = 'message-time';
+        time.innerText = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        bubble.appendChild(time);
+
+        msgDiv.appendChild(bubble);
+
+        // Для своих сообщений аватарка справа (после пузырька)
+        if (isOwn) {
+            const ownAvatar = avatar.cloneNode(true);
+            msgDiv.appendChild(ownAvatar);
+        }
+
+        messagesDiv.appendChild(msgDiv);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
@@ -632,28 +680,18 @@
         }
     }
 
-    // Отправка сообщения
-    async function sendMessage() {
+    // Отправка сообщения через WebSocket
+    function sendMessage() {
         if (!currentChatId) return alert('Выберите чат');
         const content = document.getElementById('messageContent').value;
         if (!content.trim()) return;
-        const response = await fetch('/api/chats/messages', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + token
-            },
-            body: JSON.stringify({ chatId: currentChatId, content })
-        });
-        if (response.ok) {
-            document.getElementById('messageContent').value = '';
-            // Перезагрузить сообщения и чаты (чтобы обновить последнее сообщение)
-            openChat(currentChatId);
-            loadChats(); // обновить список чатов для нового последнего сообщения
-        } else {
-            const err = await response.text();
-            alert('Ошибка отправки: ' + err);
-        }
+        const chatMessage = {
+            chatId: currentChatId,
+            content: content
+        };
+        stompClient.send("/app/chat.sendMessage", {}, JSON.stringify(chatMessage));
+        document.getElementById('messageContent').value = '';
+        // Сообщение появится через подписку
     }
 
     // Показать всех пользователей (кроме себя)
@@ -672,21 +710,6 @@
             }
         });
     }
-
-    // Автообновление сообщений каждые 5 секунд
-    setInterval(() => {
-        if (currentChatId && token) {
-            fetch(`/api/chats/${currentChatId}/messages`, {
-                headers: { 'Authorization': 'Bearer ' + token }
-            })
-                .then(res => res.json())
-                .then(messages => {
-                    displayMessages(messages);
-                    loadChats(); // обновить список чатов (последнее сообщение)
-                })
-                .catch(err => console.error('Auto refresh error:', err));
-        }
-    }, 5000);
 </script>
 
 </body>
