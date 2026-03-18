@@ -1,0 +1,24 @@
+###
+#Создание пользователя
+POST http://localhost:8080/api/test/register?username=emil3&email=emil3@mail.com&password=secret
+###
+#Вывести всех пользователей
+GET http://localhost:8080/api/test/users
+###
+#найти пользователя
+POST http://localhost:8080/api/test/login?username=emil&password=secret
+
+###
+#получение JWT
+POST http://localhost:8080/api/test/login
+Content-Type: application/json
+
+{
+  "username": "emil3",
+  "password": "secret"
+}
+
+###
+#список пользователей (без паролей).
+GET http://localhost:8080/api/test/users
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJlbWlsMyIsImlhdCI6MTc3MzgzNTQ3MCwiZXhwIjoxNzczOTIxODcwfQ.sltE0pYPrcu7o92CFoeQiWNUZBneGrEXTUstd3WnfV_3wrThg4Fx_qF05bBGeJuTc9rEy4L-B8PugOcHsn28Sg
