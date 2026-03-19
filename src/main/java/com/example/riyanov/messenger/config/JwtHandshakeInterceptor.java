@@ -23,8 +23,6 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
         if (request instanceof ServletServerHttpRequest) {
             ServletServerHttpRequest servletRequest = (ServletServerHttpRequest) request;
             String token = servletRequest.getServletRequest().getParameter("token");
-            System.out.println("WebSocket handshake, token: " + token);
-
             if (token != null) {
                 if (token.startsWith("Bearer ")) {
                     token = token.substring(7);
@@ -32,24 +30,13 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
                 try {
                     String username = jwtUtil.extractUsername(token);
                     Long userId = jwtUtil.extractUserId(token);
-                    System.out.println("Extracted username: " + username + ", userId: " + userId);
-
                     if (username != null && jwtUtil.validateToken(token, username)) {
-                        if (userId != null) {
-                            attributes.put("userId", userId);
-                            attributes.put("username", username);
-                            System.out.println("User authenticated via WebSocket: " + username);
-                        } else {
-                            System.out.println("Token valid but userId missing");
-                        }
-                    } else {
-                        System.out.println("Token validation failed");
+                        attributes.put("userId", userId);
+                        attributes.put("username", username); // сохраняем имя
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-            } else {
-                System.out.println("No token provided");
             }
         }
         return true;
