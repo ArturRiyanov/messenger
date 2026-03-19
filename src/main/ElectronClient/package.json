@@ -1,0 +1,13 @@
+{
+  "name": "messenger-electron",
+  "version": "1.0.0",
+  "description": "Desktop client for your messenger",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^30.0.0"
+  }
+}
