@@ -31,6 +31,10 @@ public class ChatMapper {
         dto.setSender(toUserDto(message.getSender()));
         dto.setContent(message.getContent());
         dto.setCreatedAt(message.getCreatedAt());
+        dto.setUpdatedAt(message.getUpdatedAt());          // <-- добавили
+        dto.setParentMessageId(message.getParentMessage() != null ? message.getParentMessage().getId() : null);
+        dto.setType(message.getType() != null ? message.getType().name() : "REGULAR");
+        dto.setPinned(message.getPinned());
         return dto;
     }
 

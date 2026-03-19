@@ -18,7 +18,7 @@ public class Chat {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String name; // может быть null для личных чатов
+    private String name;
 
     @Column(name = "is_group")
     private Boolean isGroup = false;
@@ -27,12 +27,14 @@ public class Chat {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    // Связь с участниками
     @OneToMany(mappedBy = "chat", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ChatParticipant> participants = new ArrayList<>();
 
-    // Связь с сообщениями
     @OneToMany(mappedBy = "chat", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("createdAt ASC")
     private List<Message> messages = new ArrayList<>();
+
+    @ManyToOne
+    @JoinColumn(name = "pinned_message_id")
+    private Message pinnedMessage; // последнее закреплённое сообщение
 }

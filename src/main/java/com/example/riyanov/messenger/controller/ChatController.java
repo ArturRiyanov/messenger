@@ -1,10 +1,6 @@
 package com.example.riyanov.messenger.controller;
 
-import com.example.riyanov.messenger.dto.ChatDto;
-import com.example.riyanov.messenger.dto.CreateChatRequest;
-import com.example.riyanov.messenger.dto.MessageDto;
-import com.example.riyanov.messenger.dto.SendMessageRequest;
-import com.example.riyanov.messenger.dto.UpdateMessageRequest;  // нужно создать
+import com.example.riyanov.messenger.dto.*;
 import com.example.riyanov.messenger.security.CustomUserDetails;
 import com.example.riyanov.messenger.service.ChatService;
 import lombok.RequiredArgsConstructor;
@@ -60,6 +56,74 @@ public class ChatController {
     public ResponseEntity<Void> deleteMessage(@PathVariable Long messageId,
                                               @AuthenticationPrincipal CustomUserDetails userDetails) {
         chatService.deleteMessage(messageId, userDetails.getId());
+        return ResponseEntity.noContent().build();
+    }
+
+    // ========== НОВЫЕ ЭНДПОИНТЫ ==========
+
+    @PostMapping("/{chatId}/messages/{messageId}/pin")
+    public ResponseEntity<Void> pinMessage(@PathVariable Long chatId, @PathVariable Long messageId,
+                                           @AuthenticationPrincipal CustomUserDetails userDetails) {
+        chatService.pinMessage(chatId, messageId, userDetails.getId());
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{chatId}/messages/{messageId}/pin")
+    public ResponseEntity<Void> unpinMessage(@PathVariable Long chatId, @PathVariable Long messageId,
+                                             @AuthenticationPrincipal CustomUserDetails userDetails) {
+        chatService.unpinMessage(chatId, messageId, userDetails.getId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{chatId}/pinned")
+    public ResponseEntity<List<MessageDto>> getPinnedMessages(@PathVariable Long chatId,
+                                                              @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(chatService.getPinnedMessages(chatId, userDetails.getId()));
+    }
+
+    @PostMapping("/{chatId}/messages/{messageId}/reply")
+    public ResponseEntity<MessageDto> replyToMessage(@PathVariable Long chatId, @PathVariable Long messageId,
+                                                     @RequestBody SendMessageRequest request,
+                                                     @AuthenticationPrincipal CustomUserDetails userDetails) {
+        MessageDto reply = chatService.replyToMessage(chatId, messageId, request.getContent(), userDetails.getId());
+        return ResponseEntity.ok(reply);
+    }
+
+    @PostMapping("/{chatId}/messages/{messageId}/forward")
+    public ResponseEntity<MessageDto> forwardMessage(@PathVariable Long chatId, @PathVariable Long messageId,
+                                                     @RequestBody ForwardMessageRequest request,
+                                                     @AuthenticationPrincipal CustomUserDetails userDetails) {
+        MessageDto forwarded = chatService.forwardMessage(chatId, messageId, request.getTargetChatId(), userDetails.getId());
+        return ResponseEntity.ok(forwarded);
+    }
+
+    @DeleteMapping("/{chatId}")
+    public ResponseEntity<Void> deleteChat(@PathVariable Long chatId,
+                                           @AuthenticationPrincipal CustomUserDetails userDetails) {
+        chatService.deleteChat(chatId, userDetails.getId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{chatId}")
+    public ResponseEntity<ChatDto> updateChat(@PathVariable Long chatId,
+                                              @RequestBody UpdateChatRequest request,
+                                              @AuthenticationPrincipal CustomUserDetails userDetails) {
+        ChatDto updated = chatService.updateChat(chatId, request, userDetails.getId());
+        return ResponseEntity.ok(updated);
+    }
+
+    @PostMapping("/{chatId}/invite")
+    public ResponseEntity<Void> inviteToChat(@PathVariable Long chatId,
+                                             @RequestBody InviteRequest request,
+                                             @AuthenticationPrincipal CustomUserDetails userDetails) {
+        chatService.inviteToChat(chatId, request.getUserId(), userDetails.getId());
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{chatId}/messages")
+    public ResponseEntity<Void> clearChatHistory(@PathVariable Long chatId,
+                                                 @AuthenticationPrincipal CustomUserDetails userDetails) {
+        chatService.clearChatHistory(chatId, userDetails.getId());
         return ResponseEntity.noContent().build();
     }
 }

@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface MessageRepository extends JpaRepository<Message, Long> {
     List<Message> findByChatIdOrderByCreatedAtAsc(Long chatId);
+    void deleteByChatId(Long chatId);
+    List<Message> findByChatIdAndPinnedTrue(Long chatId); // добавить
 }

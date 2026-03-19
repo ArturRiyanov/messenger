@@ -33,4 +33,18 @@ public class Message {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @ManyToOne
+    @JoinColumn(name = "parent_message_id")
+    private Message parentMessage;
+
+    @Enumerated(EnumType.STRING)
+    private MessageType type = MessageType.REGULAR;
+
+    @Column(name = "is_pinned")
+    private Boolean pinned = false;
+
+    public enum MessageType {
+        REGULAR, REPLY, FORWARD
+    }
 }

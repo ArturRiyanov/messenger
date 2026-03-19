@@ -1,7 +1,6 @@
 package com.example.riyanov.messenger.dto;
 
 import lombok.Data;
-
 import java.time.LocalDateTime;
 
 @Data
@@ -11,5 +10,8 @@ public class MessageDto {
     private UserDto sender;
     private String content;
     private LocalDateTime createdAt;
-    private boolean typing;
+    private LocalDateTime updatedAt; // добавить
+    private Long parentMessageId;
+    private String type; // или Enum
+    private Boolean pinned;
 }

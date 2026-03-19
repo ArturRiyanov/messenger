@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Messenger (упрощённый)</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: sans-serif; background: #0f172a; color: #e5e7eb; height: 100vh; display: flex; align-items: center; justify-content: center; }
+        #root { width: 100%; max-width: 1200px; height: 90vh; background: #020617; border-radius: 8px; display: flex; }
+
+        /* AUTH */
+        #auth { width: 100%; display: flex; align-items: center; justify-content: center; }
+        .auth-card { width: 320px; background: #020617; border: 1px solid #1f2937; border-radius: 8px; padding: 20px; }
+        .auth-card h2 { margin-bottom: 20px; }
+        .auth-error { color: #f87171; margin-bottom: 10px; }
+        .auth-field { margin-bottom: 12px; }
+        .auth-field input { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #1f2937; background: #0f172a; color: #e5e7eb; }
+        .auth-button { width: 100%; padding: 8px; background: #0ea5e9; border: none; border-radius: 4px; cursor: pointer; }
+        .auth-toggle { margin-top: 12px; font-size: 12px; text-align: center; cursor: pointer; color: #0ea5e9; }
+
+        /* APP */
+        #app { width: 100%; display: none; height: 100%; }
+        .app-shell { display: flex; height: 100%; }
+
+        /* LEFT PANEL */
+        .sidebar-left { width: 280px; border-right: 1px solid #1f2937; display: flex; flex-direction: column; }
+        .sidebar-header { padding: 12px; border-bottom: 1px solid #1f2937; display: flex; justify-content: space-between; align-items: center; }
+        .user-info { display: flex; align-items: center; gap: 10px; }
+        .avatar { width: 32px; height: 32px; border-radius: 50%; background: #0ea5e9; display: flex; align-items: center; justify-content: center; }
+        .logout-btn { background: none; border: 1px solid #1f2937; border-radius: 4px; padding: 4px 8px; cursor: pointer; color: #e5e7eb; }
+        .tabs { display: flex; padding: 8px; gap: 8px; }
+        .tab { flex: 1; padding: 6px; border-radius: 4px; border: 1px solid #1f2937; background: transparent; color: #9ca3af; cursor: pointer; }
+        .tab.active { background: #1f2937; color: white; }
+        .search { padding: 0 8px 8px; }
+        .search input { width: 100%; padding: 6px; border-radius: 4px; border: 1px solid #1f2937; background: #0f172a; color: #e5e7eb; }
+        .list { flex: 1; overflow-y: auto; padding: 8px; }
+        .list-item { padding: 8px; border-radius: 4px; cursor: pointer; display: flex; gap: 10px; align-items: center; }
+        .list-item:hover { background: #1f2937; }
+        .list-item.active { background: #2d3748; }
+        .item-avatar { width: 36px; height: 36px; border-radius: 50%; background: #0ea5e9; display: flex; align-items: center; justify-content: center; }
+        .item-body { flex: 1; overflow: hidden; }
+        .item-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .item-subtitle { font-size: 11px; color: #9ca3af; }
+
+        /* CENTER */
+        .center-pane { flex: 1; display: flex; flex-direction: column; background: #0f172a; }
+        .chat-header { padding: 10px; border-bottom: 1px solid #1f2937; display: flex; align-items: center; gap: 10px; background: #020617; }
+        .chat-avatar { width: 36px; height: 36px; border-radius: 50%; background: #0ea5e9; display: flex; align-items: center; justify-content: center; }
+        .chat-info { flex: 1; }
+        .chat-title { font-weight: 600; }
+        .chat-subtitle { font-size: 11px; color: #9ca3af; }
+        .typing-indicator { font-size: 11px; color: #0ea5e9; padding: 4px 10px 0; min-height: 18px; }
+        .messages { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+        .message-row { display: flex; }
+        .message-row.me { justify-content: flex-end; }
+        .message-bubble { max-width: 60%; padding: 6px 10px; border-radius: 8px; background: #1f2937; word-wrap: break-word; }
+        .message-bubble.me { background: #0ea5e9; color: #0b1120; }
+        .message-username { font-size: 10px; color: #9ca3af; }
+        .message-meta { font-size: 9px; color: #6b7280; text-align: right; margin-top: 2px; display: flex; gap: 6px; align-items: center; justify-content: flex-end; }
+        .message-actions { display: flex; gap: 4px; }
+        .msg-btn { background: none; border: none; cursor: pointer; font-size: 14px; padding: 2px; }
+        .input-area { padding: 8px; border-top: 1px solid #1f2937; display: flex; gap: 8px; background: #020617; }
+        .input-area input { flex: 1; padding: 8px; border-radius: 4px; border: 1px solid #1f2937; background: #0f172a; color: #e5e7eb; }
+        .input-area button { padding: 8px 12px; border-radius: 4px; border: none; background: #0ea5e9; cursor: pointer; }
+        .input-area button:disabled { opacity: 0.4; cursor: default; }
+
+        /* MODALS */
+        .modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 100; }
+        .modal { background: #020617; border: 1px solid #1f2937; border-radius: 8px; padding: 16px; width: 300px; }
+        .modal h3 { margin-bottom: 12px; }
+        .modal textarea { width: 100%; min-height: 80px; padding: 8px; border-radius: 4px; border: 1px solid #1f2937; background: #0f172a; color: #e5e7eb; margin-bottom: 12px; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+        .modal-btn { padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; }
+        .modal-btn.cancel { background: #1f2937; color: #e5e7eb; }
+        .modal-btn.save { background: #0ea5e9; }
+        .modal-btn.delete { background: #ef4444; color: white; }
+    </style>
+</head>
+<body>
+<div id="root">
+    <!-- AUTH -->
+    <div id="auth">
+        <div class="auth-card">
+            <h2>Messenger</h2>
+            <div class="auth-error" id="authError"></div>
+            <div id="authFormLogin">
+                <div class="auth-field"><input type="text" id="loginUsername" placeholder="Логин"></div>
+                <div class="auth-field"><input type="password" id="loginPassword" placeholder="Пароль"></div>
+                <button class="auth-button" onclick="login()">Войти</button>
+            </div>
+            <div id="authFormRegister" style="display:none;">
+                <div class="auth-field"><input type="text" id="regUsername" placeholder="Логин"></div>
+                <div class="auth-field"><input type="email" id="regEmail" placeholder="Email"></div>
+                <div class="auth-field"><input type="password" id="regPassword" placeholder="Пароль"></div>
+                <button class="auth-button" onclick="register()">Зарегистрироваться</button>
+            </div>
+            <div class="auth-toggle" onclick="toggleAuthMode()">
+                <span id="authToggleText">Нет аккаунта? Зарегистрироваться</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- APP -->
+    <div id="app">
+        <div class="app-shell">
+            <!-- Левая панель -->
+            <div class="sidebar-left">
+                <div class="sidebar-header">
+                    <div class="user-info">
+                        <div class="avatar" id="currentUserAvatar">U</div>
+                        <span id="currentUserLabel">...</span>
+                    </div>
+                    <button class="logout-btn" onclick="logout()">Выйти</button>
+                </div>
+                <div class="tabs">
+                    <button class="tab active" id="tabChats" onclick="switchTab('chats')">Чаты</button>
+                    <button class="tab" id="tabUsers" onclick="switchTab('users')">Пользователи</button>
+                </div>
+                <div class="search">
+                    <input id="searchInput" placeholder="Поиск" oninput="onSearchChange()">
+                </div>
+                <div class="list" id="chatsList"></div>
+                <div class="list" id="usersList" style="display:none;"></div>
+            </div>
+
+            <!-- Центральная панель -->
+            <div class="center-pane">
+                <div class="chat-header">
+                    <div class="chat-avatar" id="chatAvatar">C</div>
+                    <div class="chat-info">
+                        <div class="chat-title" id="chatTitle">Выберите чат</div>
+                        <div class="chat-subtitle" id="chatSubtitle"></div>
+                    </div>
+                </div>
+                <div class="typing-indicator" id="typingIndicator"></div>
+                <div class="messages" id="messages"></div>
+                <div class="input-area">
+                    <input type="text" id="messageInput" placeholder="Сообщение..." disabled oninput="onTyping()" onkeydown="if(event.key==='Enter') sendMessage()">
+                    <button id="sendBtn" onclick="sendMessage()" disabled>Отправить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка редактирования -->
+    <div id="editModal" class="modal-overlay">
+        <div class="modal">
+            <h3>Редактировать сообщение</h3>
+            <textarea id="editText"></textarea>
+            <div class="modal-actions">
+                <button class="modal-btn cancel" onclick="closeEditModal()">Отмена</button>
+                <button class="modal-btn save" onclick="saveEdit()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка удаления -->
+    <div id="deleteModal" class="modal-overlay">
+        <div class="modal">
+            <h3>Удалить сообщение?</h3>
+            <div class="modal-actions">
+                <button class="modal-btn cancel" onclick="closeDeleteModal()">Отмена</button>
+                <button class="modal-btn delete" onclick="confirmDelete()">Удалить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+<script>
+    // ---------- Конфигурация ----------
+    const API_BASE = 'http://localhost:8080/api';
+    const AUTH_BASE = 'http://localhost:8080/api/test';
+    const STORAGE_KEY = 'messenger_user';
+    const LAST_CHAT_KEY = 'lastChatId';
+
+    let token = null;
+    let currentUser = null;
+    let stompClient = null;
+    let currentChatId = null;
+    let typingTimeout = null;
+    let typingUsers = new Set();
+    let userMap = new Map();
+    let chatsCache = [];
+    let activeTab = 'chats';
+    let chatSubscriptions = new Map();
+
+    let editingMessageId = null;
+    let deletingMessageId = null;
+
+    // ---------- Вспомогательные ----------
+    function escapeHtml(str) {
+        return (str || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+    }
+
+    // ---------- Работа с localStorage ----------
+    function loadStoredAuth() {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+            try { const data = JSON.parse(stored); token = data.token; currentUser = data.user; return true; } catch (e) {}
+        }
+        return false;
+    }
+    function saveAuth(token, user) { localStorage.setItem(STORAGE_KEY, JSON.stringify({ token, user })); }
+    function clearAuth() { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(LAST_CHAT_KEY); token = null; currentUser = null; }
+
+    function showAuth() { document.getElementById('auth').style.display = 'flex'; document.getElementById('app').style.display = 'none'; }
+    function showApp() { document.getElementById('auth').style.display = 'none'; document.getElementById('app').style.display = 'block'; }
+
+    function toggleAuthMode() {
+        const loginForm = document.getElementById('authFormLogin');
+        const regForm = document.getElementById('authFormRegister');
+        const toggleText = document.getElementById('authToggleText');
+        document.getElementById('authError').innerText = '';
+        if (loginForm.style.display !== 'none') {
+            loginForm.style.display = 'none';
+            regForm.style.display = 'block';
+            toggleText.innerText = 'Уже есть аккаунт? Войти';
+        } else {
+            loginForm.style.display = 'block';
+            regForm.style.display = 'none';
+            toggleText.innerText = 'Нет аккаунта? Зарегистрироваться';
+        }
+    }
+
+    async function register() {
+        const username = document.getElementById('regUsername').value.trim();
+        const email = document.getElementById('regEmail').value.trim();
+        const password = document.getElementById('regPassword').value.trim();
+        const err = document.getElementById('authError');
+        err.innerText = '';
+        if (!username || !email || !password) { err.innerText = 'Заполните все поля'; return; }
+        try {
+            const params = new URLSearchParams({username, email, password});
+            const res = await fetch(`${AUTH_BASE}/register?` + params, { method: 'POST' });
+            if (!res.ok) { err.innerText = 'Ошибка регистрации'; return; }
+            toggleAuthMode();
+            err.innerText = 'Регистрация успешна, войдите.';
+        } catch (e) { err.innerText = 'Ошибка сети'; }
+    }
+
+    async function login() {
+        const username = document.getElementById('loginUsername').value.trim();
+        const password = document.getElementById('loginPassword').value.trim();
+        const err = document.getElementById('authError');
+        err.innerText = '';
+        if (!username || !password) { err.innerText = 'Введите логин и пароль'; return; }
+        try {
+            const res = await fetch(`${AUTH_BASE}/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            if (!res.ok) { err.innerText = 'Неверные данные'; return; }
+            const data = await res.json();
+            token = data.token;
+            currentUser = { id: data.id, username: data.username };
+            saveAuth(token, currentUser);
+            document.getElementById('currentUserLabel').innerText = data.username;
+            document.getElementById('currentUserAvatar').innerText = (data.username || 'U')[0].toUpperCase();
+            showApp();
+            await loadUsers();
+            await loadChats();
+            connectWebSocket();
+            const lastChatId = localStorage.getItem(LAST_CHAT_KEY);
+            if (lastChatId) {
+                const chat = chatsCache.find(c => c.id == lastChatId);
+                if (chat) openChat(chat.id, chat);
+            }
+        } catch (e) { err.innerText = 'Ошибка сети'; }
+    }
+
+    function logout() {
+        if (stompClient) stompClient.disconnect();
+        clearAuth();
+        document.getElementById('messages').innerHTML = '';
+        document.getElementById('chatsList').innerHTML = '';
+        document.getElementById('usersList').innerHTML = '';
+        currentChatId = null;
+        showAuth();
+    }
+
+    async function loadUsers() {
+        if (!token) return;
+        try {
+            const res = await fetch(`${AUTH_BASE}/users`, { headers: { Authorization: 'Bearer ' + token } });
+            if (!res.ok) throw new Error('loadUsers failed');
+            const users = await res.json();
+            userMap.clear();
+            users.forEach(u => userMap.set(u.id, u));
+            renderUsers(users);
+        } catch (e) { console.error(e); }
+    }
+
+    function renderUsers(users) {
+        const list = document.getElementById('usersList');
+        list.innerHTML = '';
+        users.filter(u => u.id !== currentUser?.id).forEach(u => {
+            const div = document.createElement('div');
+            div.className = 'list-item';
+            div.onclick = () => createOrOpenPrivateChat(u);
+            div.innerHTML = `
+                <div class="item-avatar">${(u.username || 'U')[0].toUpperCase()}</div>
+                <div class="item-body">
+                    <div class="item-title">${escapeHtml(u.username)}</div>
+                    <div class="item-subtitle">${escapeHtml(u.email || '')}</div>
+                </div>`;
+            list.appendChild(div);
+        });
+    }
+
+    async function loadChats() {
+        if (!token) return;
+        try {
+            const res = await fetch(`${API_BASE}/chats`, { headers: { Authorization: 'Bearer ' + token } });
+            if (!res.ok) throw new Error('loadChats failed');
+            const chats = await res.json();
+            chatsCache = chats;
+            renderChats(chats);
+        } catch (e) { console.error(e); }
+    }
+
+    function buildPrivateChatTitle(chat) {
+        if (!chat.participants || !currentUser) return 'Личный чат';
+        const other = chat.participants.find(p => p.id !== currentUser.id);
+        return other ? other.username : 'Личный чат';
+    }
+
+    function renderChats(chats) {
+        const list = document.getElementById('chatsList');
+        list.innerHTML = '';
+        chats.forEach(c => {
+            const div = document.createElement('div');
+            div.className = 'list-item';
+            div.dataset.chatId = c.id;
+            div.onclick = () => openChat(c.id, c);
+            const title = c.isGroup ? (c.name || 'Групповой чат') : buildPrivateChatTitle(c);
+            const last = c.lastMessage ? `${c.lastMessage.sender.username}: ${c.lastMessage.content}` : 'Нет сообщений';
+            div.innerHTML = `
+                <div class="item-avatar">${(title || 'C')[0].toUpperCase()}</div>
+                <div class="item-body">
+                    <div class="item-title">${escapeHtml(title)}</div>
+                    <div class="item-subtitle">${escapeHtml(last)}</div>
+                </div>`;
+            list.appendChild(div);
+        });
+    }
+
+    async function createOrOpenPrivateChat(user) {
+        try {
+            const body = { name: null, participantIds: [currentUser.id, user.id] };
+            await fetch(`${API_BASE}/chats`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                body: JSON.stringify(body)
+            });
+            await loadChats();
+        } catch (e) { console.error(e); }
+    }
+
+    async function openChat(chatId, chatObj) {
+        currentChatId = chatId;
+        localStorage.setItem(LAST_CHAT_KEY, chatId);
+
+        document.querySelectorAll('#chatsList .list-item').forEach(el => {
+            el.classList.toggle('active', Number(el.dataset.chatId) === chatId);
+        });
+
+        const title = chatObj ? (chatObj.isGroup ? (chatObj.name || 'Групповой чат') : buildPrivateChatTitle(chatObj)) : 'Чат';
+        document.getElementById('chatTitle').innerText = title;
+        document.getElementById('chatAvatar').innerText = (title || 'C')[0].toUpperCase();
+
+        let subtitle = '';
+        if (chatObj && !chatObj.isGroup && chatObj.participants) {
+            const other = chatObj.participants.find(p => p.id !== currentUser.id);
+            if (other) {
+                subtitle = other.onlineStatus ? '● в сети' : '○ не в сети';
+            }
+        }
+        document.getElementById('chatSubtitle').innerText = subtitle;
+
+        document.getElementById('messageInput').disabled = false;
+        document.getElementById('sendBtn').disabled = false;
+        document.getElementById('messages').innerHTML = '';
+        document.getElementById('typingIndicator').innerText = '';
+        await loadMessages(chatId);
+        setTimeout(() => ensureChatSubscription(chatId), 200);
+    }
+
+    async function loadMessages(chatId) {
+        if (!token) return;
+        try {
+            const res = await fetch(`${API_BASE}/chats/${chatId}/messages`, { headers: { Authorization: 'Bearer ' + token } });
+            if (!res.ok) throw new Error('loadMessages failed');
+            const msgs = await res.json();
+            renderMessages(msgs);
+        } catch (e) { console.error(e); }
+    }
+
+    function renderMessages(msgs) {
+        const box = document.getElementById('messages');
+        box.innerHTML = '';
+        msgs.forEach(m => appendMessage(m));
+        box.scrollTop = box.scrollHeight;
+    }
+
+    function appendMessage(m) {
+        const box = document.getElementById('messages');
+        const row = document.createElement('div');
+        const isMe = m.sender?.id === currentUser?.id;
+        row.className = 'message-row' + (isMe ? ' me' : '');
+        row.dataset.id = m.id;
+        const time = m.createdAt ? new Date(m.createdAt).toLocaleTimeString() : '';
+        const edited = m.updatedAt && m.createdAt && m.updatedAt !== m.createdAt ? ' (ред.)' : '';
+
+        let actionsHtml = '';
+        if (isMe) {
+            actionsHtml = `
+                <div class="message-actions">
+                    <button class="msg-btn" onclick="openEditModal(${m.id})">✏️</button>
+                    <button class="msg-btn" onclick="openDeleteModal(${m.id})">🗑️</button>
+                </div>`;
+        }
+
+        row.innerHTML = `
+            <div class="message-bubble ${isMe ? 'me' : 'other'}">
+                <div class="message-username">${escapeHtml(m.sender?.username || '')}</div>
+                <div class="message-content">${escapeHtml(m.content || '')}</div>
+                <div class="message-meta">
+                    <span>${time}${edited}</span>
+                    ${actionsHtml}
+                </div>
+            </div>`;
+        box.appendChild(row);
+        box.scrollTop = box.scrollHeight;
+    }
+
+    // ---------- WebSocket ----------
+    function connectWebSocket() {
+        if (!token) return;
+        const socket = new SockJS('http://localhost:8080/ws?token=' + encodeURIComponent('Bearer ' + token));
+        stompClient = Stomp.over(socket);
+        stompClient.debug = null;
+        stompClient.connect({}, frame => {
+            stompClient.subscribe('/topic/user.status', msg => {
+                const data = JSON.parse(msg.body);
+                const u = userMap.get(data.userId);
+                if (u) {
+                    u.onlineStatus = data.online;
+                    // обновление UI для статусов не критично
+                }
+            });
+            if (currentChatId) ensureChatSubscription(currentChatId);
+        }, err => {
+            console.error('WS error', err);
+            setTimeout(connectWebSocket, 5000);
+        });
+    }
+
+    function ensureChatSubscription(chatId) {
+        if (!stompClient?.connected) {
+            setTimeout(() => ensureChatSubscription(chatId), 200);
+            return;
+        }
+        if (chatSubscriptions.has(chatId)) return;
+        const sub1 = stompClient.subscribe(`/topic/chat.${chatId}`, msg => {
+            const data = JSON.parse(msg.body);
+            if (data.action === 'CREATE') {
+                const m = data.payload;
+                if (m.chatId === currentChatId) appendMessage(m);
+                loadChats();
+            } else if (data.action === 'UPDATE') {
+                const m = data.payload;
+                const row = document.querySelector(`.message-row[data-id="${m.id}"]`);
+                if (row) {
+                    const bubble = row.querySelector('.message-bubble');
+                    if (bubble) {
+                        const time = m.createdAt ? new Date(m.createdAt).toLocaleTimeString() : '';
+                        const edited = m.updatedAt && m.createdAt && m.updatedAt !== m.createdAt ? ' (ред.)' : '';
+                        bubble.innerHTML = `
+                            <div class="message-username">${escapeHtml(m.sender?.username || '')}</div>
+                            <div class="message-content">${escapeHtml(m.content || '')}</div>
+                            <div class="message-meta">
+                                <span>${time}${edited}</span>
+                                ${currentUser && m.sender?.id === currentUser.id ? `
+                                    <div class="message-actions">
+                                        <button class="msg-btn" onclick="openEditModal(${m.id})">✏️</button>
+                                        <button class="msg-btn" onclick="openDeleteModal(${m.id})">🗑️</button>
+                                    </div>` : ''}
+                            </div>`;
+                    }
+                }
+                loadChats();
+            } else if (data.action === 'DELETE') {
+                const messageId = data.payload;
+                const row = document.querySelector(`.message-row[data-id="${messageId}"]`);
+                if (row) row.remove();
+                loadChats();
+            }
+        });
+        const sub2 = stompClient.subscribe(`/topic/chat.${chatId}.typing`, msg => {
+            const data = JSON.parse(msg.body);
+            handleTypingEvent(data);
+        });
+        chatSubscriptions.set(chatId, [sub1, sub2]);
+    }
+
+    function handleTypingEvent(data) {
+        if (data.chatId !== currentChatId) return;
+        if (data.typing) typingUsers.add(data.username);
+        else typingUsers.delete(data.username);
+        const indicator = document.getElementById('typingIndicator');
+        indicator.innerText = typingUsers.size ? Array.from(typingUsers).join(', ') + ' печатает...' : '';
+    }
+
+    function onTyping() {
+        if (!stompClient?.connected || !currentChatId) return;
+        stompClient.send('/app/chat.typing', {}, JSON.stringify({ chatId: currentChatId, typing: true }));
+        if (typingTimeout) clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+            stompClient.send('/app/chat.typing', {}, JSON.stringify({ chatId: currentChatId, typing: false }));
+        }, 1500);
+    }
+
+    function sendMessage() {
+        const input = document.getElementById('messageInput');
+        const text = input.value.trim();
+        if (!text || !currentChatId || !stompClient?.connected) return;
+        stompClient.send('/app/chat.sendMessage', {}, JSON.stringify({ chatId: currentChatId, content: text }));
+        input.value = '';
+    }
+
+    function switchTab(tab) {
+        activeTab = tab;
+        document.getElementById('tabChats').classList.toggle('active', tab === 'chats');
+        document.getElementById('tabUsers').classList.toggle('active', tab === 'users');
+        document.getElementById('chatsList').style.display = tab === 'chats' ? 'block' : 'none';
+        document.getElementById('usersList').style.display = tab === 'users' ? 'block' : 'none';
+    }
+
+    function onSearchChange() {
+        const q = document.getElementById('searchInput').value.toLowerCase();
+        const container = activeTab === 'chats' ? document.getElementById('chatsList') : document.getElementById('usersList');
+        Array.from(container.children).forEach(el => {
+            const title = el.querySelector('.item-title')?.innerText.toLowerCase() || '';
+            el.style.display = title.includes(q) ? 'flex' : 'none';
+        });
+    }
+
+    // ---------- Редактирование / Удаление ----------
+    function openEditModal(id) {
+        editingMessageId = id;
+        // Берём текущий текст из сообщения
+        const row = document.querySelector(`.message-row[data-id="${id}"]`);
+        if (row) {
+            const contentDiv = row.querySelector('.message-content');
+            document.getElementById('editText').value = contentDiv ? contentDiv.innerText : '';
+        }
+        document.getElementById('editModal').style.display = 'flex';
+    }
+
+    function closeEditModal() {
+        editingMessageId = null;
+        document.getElementById('editModal').style.display = 'none';
+    }
+
+    async function saveEdit() {
+        if (!editingMessageId) return;
+        const newText = document.getElementById('editText').value.trim();
+        if (!newText) { closeEditModal(); return; }
+        try {
+            const res = await fetch(`${API_BASE}/chats/messages/${editingMessageId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+                body: JSON.stringify({ content: newText })
+            });
+            if (res.ok) {
+                // обновление придёт по WebSocket
+            }
+            closeEditModal();
+        } catch (e) { console.error(e); closeEditModal(); }
+    }
+
+    function openDeleteModal(id) {
+        deletingMessageId = id;
+        document.getElementById('deleteModal').style.display = 'flex';
+    }
+
+    function closeDeleteModal() {
+        deletingMessageId = null;
+        document.getElementById('deleteModal').style.display = 'none';
+    }
+
+    async function confirmDelete() {
+        if (!deletingMessageId) return;
+        try {
+            await fetch(`${API_BASE}/chats/messages/${deletingMessageId}`, {
+                method: 'DELETE',
+                headers: { Authorization: 'Bearer ' + token }
+            });
+            closeDeleteModal();
+        } catch (e) { console.error(e); closeDeleteModal(); }
+    }
+
+    // ---------- Инициализация при загрузке ----------
+    window.addEventListener('load', async () => {
+        if (loadStoredAuth()) {
+            try {
+                const testRes = await fetch(`${API_BASE}/chats`, { headers: { Authorization: 'Bearer ' + token } });
+                if (testRes.ok) {
+                    document.getElementById('currentUserLabel').innerText = currentUser.username;
+                    document.getElementById('currentUserAvatar').innerText = (currentUser.username || 'U')[0].toUpperCase();
+                    showApp();
+                    await loadUsers();
+                    await loadChats();
+                    connectWebSocket();
+                    const lastChatId = localStorage.getItem(LAST_CHAT_KEY);
+                    if (lastChatId) {
+                        const chat = chatsCache.find(c => c.id == lastChatId);
+                        if (chat) openChat(chat.id, chat);
+                    }
+                } else { clearAuth(); showAuth(); }
+            } catch (e) { clearAuth(); showAuth(); }
+        } else { showAuth(); }
+    });
+</script>
+</body>
+</html>

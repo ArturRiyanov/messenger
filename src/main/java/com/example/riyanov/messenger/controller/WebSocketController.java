@@ -29,7 +29,6 @@ public class WebSocketController {
     @MessageMapping("/chat.typing")
     public void typingIndicator(@Payload TypingNotification notification,
                                 SimpMessageHeaderAccessor headerAccessor) {
-
         Long userId = (Long) headerAccessor.getSessionAttributes().get("userId");
         String username = (String) headerAccessor.getSessionAttributes().get("username");
 
@@ -37,7 +36,7 @@ public class WebSocketController {
 
         notification.setUserId(userId);
         notification.setUsername(username);
-        notification.setTyping(true); // <-- ключевой момент
+        // НЕ затираем typing, оставляем как есть
 
         messagingTemplate.convertAndSend(
                 "/topic/chat." + notification.getChatId() + ".typing",
