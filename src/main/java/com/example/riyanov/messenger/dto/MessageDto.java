@@ -11,4 +11,5 @@ public class MessageDto {
     private UserDto sender;
     private String content;
     private LocalDateTime createdAt;
+    private boolean typing;
 }

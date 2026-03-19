@@ -29,13 +29,22 @@ public class WebSocketController {
     @MessageMapping("/chat.typing")
     public void typingIndicator(@Payload TypingNotification notification,
                                 SimpMessageHeaderAccessor headerAccessor) {
+
         Long userId = (Long) headerAccessor.getSessionAttributes().get("userId");
         String username = (String) headerAccessor.getSessionAttributes().get("username");
+
         if (userId == null) return;
+
         notification.setUserId(userId);
         notification.setUsername(username);
-        messagingTemplate.convertAndSend("/topic/chat." + notification.getChatId() + ".typing", notification);
+        notification.setTyping(true); // <-- ключевой момент
+
+        messagingTemplate.convertAndSend(
+                "/topic/chat." + notification.getChatId() + ".typing",
+                notification
+        );
     }
+
 
     @MessageMapping("/chat.read")
     public void readReceipt(@Payload ReadReceipt receipt,

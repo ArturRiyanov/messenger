@@ -32,6 +32,9 @@ public class User {
     @Column(name = "online_status")
     private Boolean onlineStatus;
 
+    @Column(name = "last_online")
+    private LocalDateTime lastOnline;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
