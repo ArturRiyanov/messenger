@@ -7,18 +7,29 @@ const WebSocketContext = createContext();
 export const useWebSocket = () => useContext(WebSocketContext);
 
 export const WebSocketProvider = ({ children }) => {
+    console.log("WebSocketProvider MOUNTED");
     const { token, user } = useAuth();
     const [connected, setConnected] = useState(false);
     const clientRef = useRef(null);
     const subscriptions = useRef(new Map());
 
     useEffect(() => {
-        if (!token || !user) return;
+        console.log("WS useEffect triggered. token:", token, "user:", user);
 
-        // Создаём SockJS с токеном в параметрах
-        const socket = new SockJS(`/ws?token=${token}`);
+        if (!token) {
+            console.log("WS STOPPED: no token");
+            return;
+        }
+
+        console.log("WS STARTING...");
+
+        const socket = new SockJS('/ws');
+
         const client = new Client({
             webSocketFactory: () => socket,
+            connectHeaders: {
+                Authorization: `Bearer ${token}`,
+            },
             debug: (str) => console.log('STOMP:', str),
             onConnect: () => {
                 console.log('WebSocket connected');
@@ -37,9 +48,12 @@ export const WebSocketProvider = ({ children }) => {
         clientRef.current = client;
 
         return () => {
+            subscriptions.current.forEach((sub) => sub.unsubscribe());
+            subscriptions.current.clear();
             client.deactivate();
         };
-    }, [token, user]);
+    }, [token]);
+
 
     const subscribe = (destination, callback) => {
         if (!clientRef.current || !connected) {
@@ -48,8 +62,7 @@ export const WebSocketProvider = ({ children }) => {
         }
         try {
             const sub = clientRef.current.subscribe(destination, (message) => {
-                const body = JSON.parse(message.body);
-                callback(body);
+                callback(JSON.parse(message.body));
             });
             subscriptions.current.set(destination, sub);
             return sub;

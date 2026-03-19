@@ -10,7 +10,7 @@ export default function ChatLayout() {
     const [chats, setChats] = useState([]);
     const [selectedChat, setSelectedChat] = useState(null);
     const { user } = useAuth();
-    const { subscribe, unsubscribe } = useWebSocket();
+    const { subscribe, unsubscribe, connected } = useWebSocket();
     const navigate = useNavigate();
 
     const loadChats = async () => {
@@ -27,17 +27,26 @@ export default function ChatLayout() {
     }, []);
 
     useEffect(() => {
-        if (!subscribe) return;
-        const sub = subscribe('/topic/user.status', status => {
-            setChats(prev => prev.map(chat => ({
-                ...chat,
-                participants: chat.participants.map(p =>
-                    p.id === status.userId ? { ...p, onlineStatus: status.online } : p
-                )
-            })));
+        if (!subscribe || !connected) return;
+        const destination = '/topic/user.status';
+
+        const sub = subscribe(destination, (status) => {
+            setChats((prev) =>
+                prev.map((chat) => ({
+                    ...chat,
+                    participants: chat.participants?.map((p) =>
+                        p.id === status.userId
+                            ? { ...p, onlineStatus: status.online }
+                            : p
+                    ),
+                }))
+            );
         });
-        return () => sub && unsubscribe('/topic/user.status');
-    }, [subscribe, unsubscribe]);
+
+        return () => {
+            unsubscribe(destination);
+        };
+    }, [subscribe, unsubscribe, connected]);
 
     const handleSelectChat = (chat) => {
         setSelectedChat(chat);
@@ -45,17 +54,24 @@ export default function ChatLayout() {
     };
 
     const refreshChats = () => {
-        loadChats(); // для обновления последнего сообщения после отправки
+        loadChats();
     };
 
     return (
         <div className="flex h-screen">
             <div className="w-1/3 border-r">
-                <ChatList chats={chats} selectedChat={selectedChat} onSelectChat={handleSelectChat} />
+                <ChatList
+                    chats={chats}
+                    selectedChat={selectedChat}
+                    onSelectChat={handleSelectChat}
+                />
             </div>
             <div className="flex-1">
                 <Routes>
-                    <Route path=":chatId" element={<ChatWindow refreshChats={refreshChats} />} />
+                    <Route
+                        path=":chatId"
+                        element={<ChatWindow refreshChats={refreshChats} />}
+                    />
                     <Route path="/" element={<div className="p-4">Select a chat</div>} />
                 </Routes>
             </div>

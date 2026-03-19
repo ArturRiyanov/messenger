@@ -10,7 +10,7 @@ import {
     pinMessage,
     unpinMessage,
     replyToMessage,
-    getPinnedMessages
+    getPinnedMessages,
 } from '../../services/chat';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
@@ -24,26 +24,38 @@ export default function ChatWindow({ refreshChats }) {
     const [typingUsers, setTypingUsers] = useState([]);
     const [replyTo, setReplyTo] = useState(null);
     const { user } = useAuth();
-    const { subscribe, unsubscribe, send } = useWebSocket();
+    const { subscribe, unsubscribe, send, connected } = useWebSocket();
     const messagesEndRef = useRef(null);
 
     useEffect(() => {
+        if (!chatId) return;
         loadMessages();
         loadPinned();
-
-        if (!subscribe) return;
-
-        const msgSub = subscribe(`/topic/chat.${chatId}`, handleWsMessage);
-        const typingSub = subscribe(`/topic/chat.${chatId}.typing`, handleTyping);
-
-        return () => {
-            unsubscribe(`/topic/chat.${chatId}`);
-            unsubscribe(`/topic/chat.${chatId}.typing`);
-        };
-    }, [chatId, subscribe, unsubscribe]);
+    }, [chatId]);
 
     useEffect(() => {
-        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+        if (!chatId || !subscribe || !connected) return;
+
+        const msgDestination = `/topic/chat.${chatId}`;
+        const typingDestination = `/topic/chat.${chatId}.typing`;
+
+        const msgSub = subscribe(msgDestination, handleWsMessage);
+        const typingSub = subscribe(typingDestination, handleTyping);
+
+        return () => {
+            unsubscribe(msgDestination);
+            unsubscribe(typingDestination);
+        };
+    }, [chatId, subscribe, unsubscribe, connected]);
+
+    useEffect(() => {
+        setTimeout(
+            () =>
+                messagesEndRef.current?.scrollIntoView({
+                    behavior: 'smooth',
+                }),
+            100
+        );
     }, [messages]);
 
     const loadMessages = async () => {
@@ -66,13 +78,17 @@ export default function ChatWindow({ refreshChats }) {
 
     const handleWsMessage = ({ action, payload }) => {
         if (action === 'CREATE') {
-            setMessages(prev => [...prev, payload]);
-            // Обновить последнее сообщение в списке чатов
+            setMessages((prev) => {
+                if (prev.some((m) => m.id === payload.id)) return prev;
+                return [...prev, payload];
+            });
             refreshChats?.();
         } else if (action === 'UPDATE') {
-            setMessages(prev => prev.map(m => m.id === payload.id ? payload : m));
+            setMessages((prev) =>
+                prev.map((m) => (m.id === payload.id ? payload : m))
+            );
         } else if (action === 'DELETE') {
-            setMessages(prev => prev.filter(m => m.id !== payload));
+            setMessages((prev) => prev.filter((m) => m.id !== payload));
         } else if (action === 'PIN' || action === 'UNPIN') {
             loadPinned();
         }
@@ -80,10 +96,10 @@ export default function ChatWindow({ refreshChats }) {
 
     const handleTyping = (data) => {
         if (data.userId === user?.id) return;
-        setTypingUsers(prev =>
+        setTypingUsers((prev) =>
             data.typing
-                ? [...prev.filter(u => u.userId !== data.userId), data]
-                : prev.filter(u => u.userId !== data.userId)
+                ? [...prev.filter((u) => u.userId !== data.userId), data]
+                : prev.filter((u) => u.userId !== data.userId)
         );
     };
 
@@ -96,8 +112,12 @@ export default function ChatWindow({ refreshChats }) {
             } else {
                 newMessage = await sendMessage(chatId, content);
             }
-            setMessages(prev => [...prev, newMessage]);
-            refreshChats?.(); // обновить последнее сообщение в списке
+            // На случай, если WebSocket задержится — добавляем, но с защитой от дублей
+            setMessages((prev) => {
+                if (prev.some((m) => m.id === newMessage.id)) return prev;
+                return [...prev, newMessage];
+            });
+            refreshChats?.();
         } catch (err) {
             console.error('Failed to send message', err);
         }
@@ -106,7 +126,9 @@ export default function ChatWindow({ refreshChats }) {
     const handleEdit = async (id, content) => {
         try {
             const updated = await updateMessage(id, content);
-            setMessages(prev => prev.map(m => m.id === id ? updated : m));
+            setMessages((prev) =>
+                prev.map((m) => (m.id === id ? updated : m))
+            );
         } catch (err) {
             console.error('Edit failed', err);
         }
@@ -115,7 +137,7 @@ export default function ChatWindow({ refreshChats }) {
     const handleDelete = async (id) => {
         try {
             await deleteMessage(id);
-            setMessages(prev => prev.filter(m => m.id !== id));
+            setMessages((prev) => prev.filter((m) => m.id !== id));
         } catch (err) {
             console.error('Delete failed', err);
         }
@@ -140,7 +162,8 @@ export default function ChatWindow({ refreshChats }) {
     };
 
     const sendTyping = (typing) => {
-        send?.('/app/chat.typing', { chatId: parseInt(chatId), typing });
+        if (!chatId) return;
+        send?.('/app/chat.typing', { chatId: parseInt(chatId, 10), typing });
     };
 
     return (

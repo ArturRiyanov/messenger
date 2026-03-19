@@ -15,7 +15,14 @@ function AppRoutes() {
         <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/chats/*" element={<PrivateRoute><ChatLayout /></PrivateRoute>} />
+            <Route
+                path="/chats/*"
+                element={
+                    <PrivateRoute>
+                        <ChatLayout />
+                    </PrivateRoute>
+                }
+            />
             <Route path="/" element={<Navigate to="/chats" />} />
         </Routes>
     );
